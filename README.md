@@ -1,5 +1,7 @@
 # volume-calculator-for-dsm
 
+This repository **DOES NOT INCLUDE ANY GeoTiff/ShapeFile FILES**.
+
 ## Volume calculator for GeoTiff DSM
 - This program requires two data
   - 1. GeoTiff DSM for global information
