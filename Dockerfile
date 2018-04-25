@@ -4,17 +4,20 @@ FROM ubuntu:18.04
 RUN apt-get -y update
 RUN apt-get -y upgrade
 RUN apt-get -y install build-essential
-RUN apt-get -y install python3 python3-pip
-
-# Install requirements
-RUN apt-get -y install libgdal-dev
 
 # Set an user for app
 RUN useradd -m calc_volume
 
 WORKDIR /home/calc_volume
 
+# Install library
+RUN apt-get -y install libgdal-dev
+
+# Install language
+RUN apt-get -y install python3 python3-pip
+
 ADD requirements.txt .
+
 # GDAL package requires numpy, but it does not depend on it explicitly.
 RUN pip3 install --trusted-host pypi.python.org numpy
 RUN CPATH=/usr/include/gdal pip3 install --trusted-host pypi.python.org -r requirements.txt
