@@ -13,7 +13,7 @@ from osgeo import gdal
 
 import extent_utils as eu
 
-def clip(tiff_gt, tiff_arr, shape, no_data=-10000):
+def clip(tiff_gt, tiff_arr, lyr, no_data=-10000):
     '''
     Clip GeoTiff from `tiff_path` with ShapeFile from `shape_path`.
 
@@ -25,9 +25,6 @@ def clip(tiff_gt, tiff_arr, shape, no_data=-10000):
         path to `.shp` file
     '''
     gdal.UseExceptions()
-
-    # TODO: Check shape.GetLayerNumber()
-    lyr = shape.GetLayer()
 
     # tiff_arr_shape = tiff_arr.shape
     # tiff_pxl_ext = eu.tup_to_dic((
@@ -61,8 +58,6 @@ def clip(tiff_gt, tiff_arr, shape, no_data=-10000):
         for (x, y) in get_pts_in_lyr(lyr)
     ]
 
-    print(pxls)
-
     raster_size = (
         int(lyr_pxl_ext['max_x'] - lyr_pxl_ext['min_x']),
         int(lyr_pxl_ext['max_y'] - lyr_pxl_ext['min_y']),
@@ -75,8 +70,12 @@ def clip(tiff_gt, tiff_arr, shape, no_data=-10000):
         .reshape(raster_poly.im.size[1], raster_poly.im.size[0])
 
     clipped_arr = np.choose(mask, (clipped_arr, no_data))
+    boundary_pts = [
+        clipped_arr[0, y, x]
+        for (x, y) in pxls
+    ]
 
-    return clipped_arr
+    return clipped_arr, boundary_pts
 
 def make_lyr_gt(base_gt, lyr_ext):
     '''Make new GeoTransform for layer'''
