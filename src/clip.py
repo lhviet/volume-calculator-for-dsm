@@ -13,7 +13,7 @@ from osgeo import gdal
 
 import extent_utils as eu
 
-def clip(tiff_gt, tiff_arr, lyr, no_data=-10000):
+def clip(tiff_gt, tiff_arr, geom, no_data=-10000):
     '''
     Clip GeoTiff from `tiff_path` with ShapeFile from `shape_path`.
 
@@ -31,36 +31,37 @@ def clip(tiff_gt, tiff_arr, lyr, no_data=-10000):
     #     0, tiff_arr_shape[0],
     #     0, tiff_arr_shape[1],
     # ))
-    lyr_ext = eu.tup_to_dic(lyr.GetExtent())
-    lyr_pxl_ext = {
+    geom_pts = get_pts_in_geom(geom)
+    geom_ext = make_geom_ext(geom_pts)
+    geom_pxl_ext = {
         k: int(v)
-        for k, v in eu.apply_gt(gdal.InvGeoTransform(tiff_gt), lyr_ext).items()
+        for k, v in eu.apply_gt(gdal.InvGeoTransform(tiff_gt), geom_ext).items()
     }
 
-    lyr_gt = make_lyr_gt(tiff_gt, lyr_ext)
-    lyr_inv_gt = gdal.InvGeoTransform(lyr_gt)
+    geom_gt = make_geom_gt(tiff_gt, geom_ext)
+    geom_inv_gt = gdal.InvGeoTransform(geom_gt)
 
     if len(tiff_arr.shape) == 3:
         clipped_arr = tiff_arr[
             :,
-            lyr_pxl_ext['min_y']:lyr_pxl_ext['max_y'],
-            lyr_pxl_ext['min_x']:lyr_pxl_ext['max_x'],
+            geom_pxl_ext['min_y']:geom_pxl_ext['max_y'],
+            geom_pxl_ext['min_x']:geom_pxl_ext['max_x'],
         ]
     else:
         clipped_arr = tiff_arr[
             np.newaxis,
-            lyr_pxl_ext['min_y']:lyr_pxl_ext['max_y'],
-            lyr_pxl_ext['min_x']:lyr_pxl_ext['max_x'],
+            geom_pxl_ext['min_y']:geom_pxl_ext['max_y'],
+            geom_pxl_ext['min_x']:geom_pxl_ext['max_x'],
         ]
 
     pxls = [
-        tuple(map(int, gdal.ApplyGeoTransform(lyr_inv_gt, x, y)))
-        for (x, y) in get_pts_in_lyr(lyr)
+        tuple(map(int, gdal.ApplyGeoTransform(geom_inv_gt, x, y)))
+        for (x, y) in geom_pts
     ]
 
     raster_size = (
-        int(lyr_pxl_ext['max_x'] - lyr_pxl_ext['min_x']),
-        int(lyr_pxl_ext['max_y'] - lyr_pxl_ext['min_y']),
+        int(geom_pxl_ext['max_x'] - geom_pxl_ext['min_x']),
+        int(geom_pxl_ext['max_y'] - geom_pxl_ext['min_y']),
     )
     raster_poly = Image.new('L', raster_size, color=0x000001)
     ImageDraw.Draw(raster_poly).polygon(pxls, fill=0x000000)
@@ -77,22 +78,28 @@ def clip(tiff_gt, tiff_arr, lyr, no_data=-10000):
 
     return clipped_arr, boundary_pts
 
-def make_lyr_gt(base_gt, lyr_ext):
-    '''Make new GeoTransform for layer'''
-    tmp_gt = list(base_gt)
-    tmp_gt[0] = lyr_ext['min_x']
-    tmp_gt[3] = lyr_ext['max_y']
-    return tuple(tmp_gt)
-
-def get_pts_in_lyr(lyr):
-    '''Get points in layer'''
-    feat = lyr.GetNextFeature()
-    geom = feat.GetGeometryRef()
+def get_pts_in_geom(geom):
     raw_pts = geom.GetGeometryRef(0)
 
-    pts = []
+    return np.array([
+        (raw_pts.GetX(pt_ind), raw_pts.GetY(pt_ind))
+        for pt_ind in range(raw_pts.GetPointCount())
+    ])
 
-    for pt_ind in range(raw_pts.GetPointCount()):
-        pts.append((raw_pts.GetX(pt_ind), raw_pts.GetY(pt_ind)))
+def make_geom_ext(geom_pts):
+    max_x, max_y = np.amax(geom_pts, 0)
+    min_x, min_y = np.amin(geom_pts, 0)
 
-    return pts
+    return {
+        'min_x': min_x,
+        'max_x': max_x,
+        'min_y': min_y,
+        'max_y': max_y,
+    }
+
+def make_geom_gt(base_gt, geom_ext):
+    '''Make new GeoTransform for layer'''
+    tmp_gt = list(base_gt)
+    tmp_gt[0] = geom_ext['min_x']
+    tmp_gt[3] = geom_ext['max_y']
+    return tuple(tmp_gt)
