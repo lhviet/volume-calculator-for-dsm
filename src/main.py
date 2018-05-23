@@ -33,7 +33,7 @@ def main(argv):
     # print(geom.ExportToWkt())
     geom = ogr.CreateGeometryFromWkt(wkt_string)
 
-    print('volume: ', calculate_volume(tiff, geom))
+    print('{ "cut": %f, "fill": %f,"volume": %f }' % calculate_volume(tiff, geom))
 
 if __name__ == '__main__':
     main(sys.argv)

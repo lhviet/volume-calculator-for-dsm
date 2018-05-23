@@ -17,8 +17,18 @@ def calculate_volume(tiff, geom):
     nodata= tiff.GetRasterBand(1).GetNoDataValue()
 
     clipped, boundary = c.clip(tiff_gt, tiff.ReadAsArray(), geom, nodata)
-    min_z = np.amin(boundary)
-    clipped[clipped == nodata] = min_z
-    clipped -= min_z
+    reference_z = np.amin(boundary)
+    clipped[clipped == nodata] = reference_z
+    clipped -= reference_z
 
-    return simps(simps(clipped, None, x_gap), None, y_gap)[0]
+    cut = clipped.copy()
+    cut[cut < 0] = 0
+
+    fill = clipped.copy()
+    fill[fill > 0] = 0
+
+    cut_volume = simps(simps(cut, None, x_gap), None, y_gap)[0]
+    fill_volume = simps(simps(fill, None, x_gap), None, y_gap)[0]
+    volume = cut_volume + fill_volume
+
+    return cut_volume, fill_volume, volume
