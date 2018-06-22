@@ -41,13 +41,34 @@ def clip(tiff_gt, tiff_arr, geom, no_data=-10000):
     geom_gt = make_geom_gt(tiff_gt, geom_ext)
     geom_inv_gt = gdal.InvGeoTransform(geom_gt)
 
-    if len(tiff_arr.shape) == 3:
+    tiff_shape = tiff_arr.shape
+
+    if geom_pxl_ext['min_y'] < 0:
+        geom_pxl_ext['min_y'] = 0
+    if geom_pxl_ext['min_x'] < 0:
+        geom_pxl_ext['min_x'] = 0
+    if geom_pxl_ext['max_y'] < 0:
+        geom_pxl_ext['max_y'] = 0
+    if geom_pxl_ext['max_x'] < 0:
+        geom_pxl_ext['max_x'] = 0
+
+    if len(tiff_shape) == 3:
+        if geom_pxl_ext['max_y'] > tiff_shape[1]:
+            geom_pxl_ext['max_y'] = tiff_shape[1]
+        if geom_pxl_ext['max_x'] > tiff_shape[2]:
+            geom_pxl_ext['max_x'] = tiff_shape[2]
+
         clipped_arr = tiff_arr[
             :,
             geom_pxl_ext['min_y']:geom_pxl_ext['max_y'],
             geom_pxl_ext['min_x']:geom_pxl_ext['max_x'],
         ]
     else:
+        if geom_pxl_ext['max_y'] > tiff_shape[0]:
+            geom_pxl_ext['max_y'] = tiff_shape[0]
+        if geom_pxl_ext['max_x'] > tiff_shape[1]:
+            geom_pxl_ext['max_x'] = tiff_shape[1]
+
         clipped_arr = tiff_arr[
             np.newaxis,
             geom_pxl_ext['min_y']:geom_pxl_ext['max_y'],
@@ -59,12 +80,27 @@ def clip(tiff_gt, tiff_arr, geom, no_data=-10000):
         for (x, y) in geom_pts
     ]
 
+    # FIXME:
+    # This code make incorrect volume.
+    # For example, when you have a triangle with
+    # one point going outside to the map,
+    # the point will be filtered and result volume will be 0.
+    clipped_pxls = [
+        (x, y)
+        for (x, y) in pxls
+        if 0 <= x < geom_pxl_ext['max_x'] - geom_pxl_ext['min_x'] and
+        0 <= y < geom_pxl_ext['max_y'] - geom_pxl_ext['min_y']
+    ]
+
+    if len(clipped_pxls) < 2:
+        return np.array([]), []
+
     raster_size = (
         int(geom_pxl_ext['max_x'] - geom_pxl_ext['min_x']),
         int(geom_pxl_ext['max_y'] - geom_pxl_ext['min_y']),
     )
     raster_poly = Image.new('L', raster_size, color=0x000001)
-    ImageDraw.Draw(raster_poly).polygon(pxls, fill=0x000000)
+    ImageDraw.Draw(raster_poly).polygon(clipped_pxls, fill=0x000000)
 
     # TODO: Add error handlings for ValueError
     mask = np.fromstring(raster_poly.tobytes(), dtype=np.int8) \
@@ -73,7 +109,7 @@ def clip(tiff_gt, tiff_arr, geom, no_data=-10000):
     clipped_arr = np.choose(mask, (clipped_arr, no_data))
     boundary_pts = [
         clipped_arr[0, y, x]
-        for (x, y) in pxls
+        for (x, y) in clipped_pxls
     ]
 
     return clipped_arr, boundary_pts

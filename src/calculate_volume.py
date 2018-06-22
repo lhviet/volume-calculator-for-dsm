@@ -17,6 +17,12 @@ def calculate_volume(tiff, geom):
     nodata= tiff.GetRasterBand(1).GetNoDataValue()
 
     clipped, boundary = c.clip(tiff_gt, tiff.ReadAsArray(), geom, nodata)
+
+    # pylint: disable=len-as-condition
+    if len(clipped) == 0:
+        return 0, 0, 0
+    # pylint: enable=len-as-condition
+
     reference_z = np.amin(boundary)
     clipped[clipped == nodata] = reference_z
     clipped -= reference_z
