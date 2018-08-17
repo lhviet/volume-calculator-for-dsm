@@ -8,12 +8,12 @@ https://pcjericks.github.io/py-gdalogr-cookbook/raster_layers.html#clip-a-geotif
 import numpy as np
 from PIL import Image, ImageDraw
 # pylint: disable=import-error
-from osgeo import gdal
+from osgeo import gdal, gdalnumeric
 # pylint: enable=import-error
 
 import extent_utils as eu
 
-def clip(tiff_gt, tiff_arr, geom, no_data=-10000):
+def clip(tiff_gt, tiff_arr, geom, no_data=-10000, clip_save_name='', is_clip_saved_in_png=True):
     '''
     Clip GeoTiff from `tiff_path` with ShapeFile from `shape_path`.
 
@@ -23,6 +23,8 @@ def clip(tiff_gt, tiff_arr, geom, no_data=-10000):
         path to `.tif` file
     shape_path : osgeo.ogr.DataSource
         path to `.shp` file
+        :param clip_save_name: the name of saving clip. Empty string '' to not save. i.e. 'clipped-img'
+        :param is_clip_saved_in_png: True to save in PNG (8-bit), and False to save in GeoTiff format (Float32)
     '''
     gdal.UseExceptions()
 
@@ -53,10 +55,12 @@ def clip(tiff_gt, tiff_arr, geom, no_data=-10000):
         geom_pxl_ext['max_x'] = 0
 
     if len(tiff_shape) == 3:
-        if geom_pxl_ext['max_y'] > tiff_shape[1]:
-            geom_pxl_ext['max_y'] = tiff_shape[1]
-        if geom_pxl_ext['max_x'] > tiff_shape[2]:
-            geom_pxl_ext['max_x'] = tiff_shape[2]
+        bound_tiff_y = tiff_shape[1] - 1
+        bound_tiff_x = tiff_shape[2] - 1
+        if geom_pxl_ext['max_y'] > bound_tiff_y:
+            geom_pxl_ext['max_y'] = bound_tiff_y
+        if geom_pxl_ext['max_x'] > bound_tiff_x:
+            geom_pxl_ext['max_x'] = bound_tiff_x
 
         clipped_arr = tiff_arr[
             :,
@@ -64,10 +68,12 @@ def clip(tiff_gt, tiff_arr, geom, no_data=-10000):
             geom_pxl_ext['min_x']:geom_pxl_ext['max_x'],
         ]
     else:
-        if geom_pxl_ext['max_y'] > tiff_shape[0]:
-            geom_pxl_ext['max_y'] = tiff_shape[0]
-        if geom_pxl_ext['max_x'] > tiff_shape[1]:
-            geom_pxl_ext['max_x'] = tiff_shape[1]
+        bound_tiff_y = tiff_shape[0] - 1
+        bound_tiff_x = tiff_shape[1] - 1
+        if geom_pxl_ext['max_y'] > bound_tiff_y:
+            geom_pxl_ext['max_y'] = bound_tiff_y
+        if geom_pxl_ext['max_x'] > bound_tiff_x:
+            geom_pxl_ext['max_x'] = bound_tiff_x
 
         clipped_arr = tiff_arr[
             np.newaxis,
@@ -85,20 +91,19 @@ def clip(tiff_gt, tiff_arr, geom, no_data=-10000):
     # For example, when you have a triangle with
     # one point going outside to the map,
     # the point will be filtered and result volume will be 0.
+    ext_bound_x = geom_pxl_ext['max_x'] - geom_pxl_ext['min_x']
+    ext_bound_y = geom_pxl_ext['max_y'] - geom_pxl_ext['min_y']
     clipped_pxls = [
         (x, y)
         for (x, y) in pxls
-        if 0 <= x < geom_pxl_ext['max_x'] - geom_pxl_ext['min_x'] and
-        0 <= y < geom_pxl_ext['max_y'] - geom_pxl_ext['min_y']
+        if 0 <= x <= ext_bound_x and
+        0 <= y <= ext_bound_y
     ]
 
     if len(clipped_pxls) < 2:
         return np.array([]), []
 
-    raster_size = (
-        int(geom_pxl_ext['max_x'] - geom_pxl_ext['min_x']),
-        int(geom_pxl_ext['max_y'] - geom_pxl_ext['min_y']),
-    )
+    raster_size = (ext_bound_x + 1, ext_bound_y + 1)
     raster_poly = Image.new('L', raster_size, color=0x000001)
     ImageDraw.Draw(raster_poly).polygon(clipped_pxls, fill=0x000000)
 
@@ -111,6 +116,17 @@ def clip(tiff_gt, tiff_arr, geom, no_data=-10000):
         clipped_arr[0, y, x]
         for (x, y) in clipped_pxls
     ]
+
+    ######### TESTING BEGIN
+    # Save the clipped image to a PNG file
+    if len(clip_save_name) > 0:
+        if is_clip_saved_in_png:
+            clippedData = clipped_arr.astype(np.int8)
+            gdalnumeric.SaveArray(clippedData, clip_save_name + '.png', format="PNG")
+        else:
+            clippedData = clipped_arr.astype(np.float32)
+            gdalnumeric.SaveArray(clippedData, clip_save_name + '.tif', format="GTiff")
+    ######### TESTING END
 
     return clipped_arr, boundary_pts
 

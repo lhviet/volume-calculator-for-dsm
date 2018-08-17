@@ -7,7 +7,7 @@ from scipy.integrate import simps
 
 import clip as c
 
-def calculate_volume(tiff, geom):
+def calculate_volume(tiff, geom, clip_save_name='', is_clip_saved_in_png=True):
     '''
     Calculate volume using GeoTiff and ShapeFile
     '''
@@ -16,7 +16,7 @@ def calculate_volume(tiff, geom):
     y_gap = abs(tiff_gt[5])
     nodata= tiff.GetRasterBand(1).GetNoDataValue()
 
-    clipped, boundary = c.clip(tiff_gt, tiff.ReadAsArray(), geom, nodata)
+    clipped, boundary = c.clip(tiff_gt, tiff.ReadAsArray(), geom, nodata, clip_save_name, is_clip_saved_in_png)
 
     # pylint: disable=len-as-condition
     if len(clipped) == 0:
