@@ -64,8 +64,8 @@ def clip(tiff_gt, tiff_arr, geom, no_data=-10000, clip_save_name='', is_clip_sav
 
         clipped_arr = tiff_arr[
             :,
-            geom_pxl_ext['min_y']:geom_pxl_ext['max_y'],
-            geom_pxl_ext['min_x']:geom_pxl_ext['max_x'],
+            geom_pxl_ext['min_y']:geom_pxl_ext['max_y'] + 1,
+            geom_pxl_ext['min_x']:geom_pxl_ext['max_x'] + 1,
         ]
     else:
         bound_tiff_y = tiff_shape[0] - 1
@@ -77,8 +77,8 @@ def clip(tiff_gt, tiff_arr, geom, no_data=-10000, clip_save_name='', is_clip_sav
 
         clipped_arr = tiff_arr[
             np.newaxis,
-            geom_pxl_ext['min_y']:geom_pxl_ext['max_y'],
-            geom_pxl_ext['min_x']:geom_pxl_ext['max_x'],
+            geom_pxl_ext['min_y']:geom_pxl_ext['max_y'] + 1,
+            geom_pxl_ext['min_x']:geom_pxl_ext['max_x'] + 1,
         ]
 
     pxls = [
