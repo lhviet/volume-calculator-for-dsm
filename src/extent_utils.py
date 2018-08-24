@@ -25,7 +25,7 @@ def dic_to_tup(dic):
     )
 
 def apply_gt(geo_trans, ext, from_dic=True, to_dic=True):
-    '''Apply GeoTransform to extent'''
+    '''Apply GeoTransform to extent, mean, convert extent coordinate to georeferenced (geo_x, geo_y) location'''
     min_x, max_x, min_y, max_y = dic_to_tup(ext) if from_dic else ext
 
     min_x, min_y = gdal.ApplyGeoTransform(geo_trans, min_x, min_y)

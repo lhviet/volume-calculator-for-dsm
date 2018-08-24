@@ -32,6 +32,7 @@ def main(argv):
     # feat = lyr.GetNextFeature()
     # geom = feat.GetGeometryRef()
     # print(geom.ExportToWkt())
+    # print("Projection is {}".format(tiff.GetProjection()))
     geom = ogr.CreateGeometryFromWkt(wkt_string)
 
     m = hashlib.md5(wkt_string.encode())

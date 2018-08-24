@@ -34,7 +34,11 @@ def clip(tiff_gt, tiff_arr, geom, no_data=-10000, clip_save_name='', is_clip_sav
     #     0, tiff_arr_shape[1],
     # ))
     geom_pts = get_pts_in_geom(geom)
+
+    # Get the geo-extent of the geo polygon
     geom_ext = make_geom_ext(geom_pts)
+
+    # Get the geo extent in pixel coordinates
     geom_pxl_ext = {
         k: int(v)
         for k, v in eu.apply_gt(gdal.InvGeoTransform(tiff_gt), geom_ext).items()
@@ -54,6 +58,7 @@ def clip(tiff_gt, tiff_arr, geom, no_data=-10000, clip_save_name='', is_clip_sav
     if geom_pxl_ext['max_x'] < 0:
         geom_pxl_ext['max_x'] = 0
 
+    # Extract data from dsm (tiff_arr) to the extent (clipped_arr)
     if len(tiff_shape) == 3:
         bound_tiff_y = tiff_shape[1] - 1
         bound_tiff_x = tiff_shape[2] - 1
@@ -81,6 +86,7 @@ def clip(tiff_gt, tiff_arr, geom, no_data=-10000, clip_save_name='', is_clip_sav
             geom_pxl_ext['min_x']:geom_pxl_ext['max_x'] + 1,
         ]
 
+    # Convert the geo-polygon-points from geo-referenced to coordinates in Pixel (based on the extent)
     pxls = [
         tuple(map(int, gdal.ApplyGeoTransform(geom_inv_gt, x, y)))
         for (x, y) in geom_pts
@@ -131,6 +137,7 @@ def clip(tiff_gt, tiff_arr, geom, no_data=-10000, clip_save_name='', is_clip_sav
     return clipped_arr, boundary_pts
 
 def get_pts_in_geom(geom):
+    '''Convert the polygon WKT to an array of coordinates'''
     raw_pts = geom.GetGeometryRef(0)
 
     return np.array([
@@ -139,6 +146,15 @@ def get_pts_in_geom(geom):
     ])
 
 def make_geom_ext(geom_pts):
+    '''
+    Return the (geo-referenced) extent (display rectangle) of the geo polygon, i.e.,
+    {
+        'min_x': 14105340.903678089,
+        'max_x': 14105404.27773767,
+        'min_y': 4521636.9615872614,
+        'max_y': 4521663.9832710894
+    }
+    '''
     max_x, max_y = np.amax(geom_pts, 0)
     min_x, min_y = np.amin(geom_pts, 0)
 
