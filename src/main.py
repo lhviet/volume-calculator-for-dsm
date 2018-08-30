@@ -5,9 +5,10 @@ import sys
 import hashlib
 
 # pylint: disable=locally-disabled
-from osgeo import gdal, ogr # pylint: disable=import-error
+from osgeo import gdal # pylint: disable=import-error
 
 from calculate_volume import calculate_volume
+from wkt_geom_utils import make_wkt_geom
 
 def main(argv):
     '''
@@ -33,7 +34,7 @@ def main(argv):
     # geom = feat.GetGeometryRef()
     # print(geom.ExportToWkt())
     # print("Projection is {}".format(tiff.GetProjection()))
-    geom = ogr.CreateGeometryFromWkt(wkt_string)
+    geom = make_wkt_geom(tiff, wkt_string)
 
     m = hashlib.md5(wkt_string.encode())
     file_name = tiff_path[:(tiff_path.rfind('/') + 1)] + m.hexdigest()
